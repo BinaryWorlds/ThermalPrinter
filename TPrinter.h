@@ -1,3 +1,11 @@
+/* made by BinaryWorlds
+Not for commercial use,
+in other case by free to use it.
+
+I am not responsible for errors in the library. I deliver it "as it is".
+I will be grateful for all suggestions.
+*/
+
 #ifndef TPrinter_h
 #define TPrinter_h
 #include "Arduino.h"
