@@ -310,7 +310,7 @@ void Tprinter::online(){
 }
 
 /*for test*/
-void Tprinter::identifyChars(char* tab){ // dont use it in the same time with printFromSerial)()
+void Tprinter::identifyChars(char* tab){ // dont use it in the same time with printFromSerial()
   int i{};
   Serial.println();
   Serial.println(F("Separate letters with a space, e.g \"ą ć d\"!"));
