@@ -5,6 +5,6 @@ Not all printer functions are currently supported as barecode, bitmap and user-d
 
 Less errors, easier start for all - just use!
 
-I will be grateful for feedback
+I will be grateful for feedback.
 
 Created by BinaryWorlds @2019
