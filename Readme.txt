@@ -1,4 +1,5 @@
 A printout exactly as you planned!
+
 I decided to create a more functional library than the popular Adafruit library.
 Not all printer functions are currently supported as barecode, bitmap and user-definied character.
 
