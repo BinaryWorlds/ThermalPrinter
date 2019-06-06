@@ -1,11 +1,9 @@
 /* made by BinaryWorlds
 Not for commercial use,
 in other case by free to use it. Just copy this text and link to oryginal repository: https://github.com/BinaryWorlds/ThermalPrinter
-
 I am not responsible for errors in the library. I deliver it "as it is".
 I will be grateful for all suggestions.
 */
-
 #ifndef TPrinter_h
 #define TPrinter_h
 #include "Arduino.h"
@@ -19,6 +17,7 @@ Some features may not work on the older firmware.*/
 #define SPACE 32    // 0x20 Space
 #define ESC   27    // 0x1B Escape
 #define FS    28    // 0x1C Field separator
+#define FF    14    // 0x0C Form feed
 
 #define FONT_B        1         //Font B: 9x17, Standard font A: 12x24
 #define DARK_MODE     (1 << 1)  // anti-white mode, didnt work?
@@ -95,7 +94,15 @@ class Tprinter : public Print {
 
 private:
 
-  bool dtrEnabled{false};
+  bool
+    dtrEnabled{false},
+    /*  tested:
+    when printer stop being busy, it's doesn't mean end of printing
+    dtr pin informs about the availability of the printer's firmware - propably;
+    keep it in mind,
+    it's a big difference when you don't use dtr pin and the time needed for printing is calculated
+    */
+    calculateMode{true};
   Stream  *stream;
   int baudrate{9600}; //19200
 
@@ -114,7 +121,10 @@ private:
     charWidth{12}, //dots
     interlineHeight{6}, //dots
     charSpacing{}, //dots
-    printMode{};
+    printMode{},
+    heating_dots{9},
+    heating_time{80},
+    heating_interval{2};
   unsigned long
     endPoint{},
     char_send_time{},
@@ -141,11 +151,21 @@ private:
     void setCodePage(uint8_t page = 36);
     void setCharset(uint8_t val = 14);
 
-    void setTimes(unsigned long p = 30000, unsigned long f = 2100);//ignored if Dtr pin is disabled
-    void setHeat(uint8_t dots = 11,
-       uint8_t time = 255,
-       uint8_t interval = 40);
+    void autoCalculate(bool val = 1);
 /*
+1 - ON;
+calculate on the basis of heating points, time and interval
+every time when u change printMode or heating parameters
+
+0 - off
+calculate on the basis of oneDotHeight_printTime and oneDotHeight_feedTime
+u can change values above using setTimes
+*/
+    void calculatePrintTime();//ignored if Dtr pin is enabled
+    void setTimes(unsigned long p = 30000, unsigned long f = 2100);//ignored if Dtr pin is disabled or autoCalculate is ON
+    void setHeat(uint8_t n1 = 0, uint8_t n2 = 255, uint8_t n3 = 0);
+/*
+best quality: the smallest number of dots burned, the longest heating time
 dots: default 9 (80dots) becouse (9+1)* 8
 units = 8 dots;
 time: default 80 (800 us); units: 10 us
@@ -160,7 +180,7 @@ interval: default 2 (20us); units :10 us
     void justify(char val); // 'L' - Left 'C' - center 'R' - right
     void underline(uint8_t  n); // off 0 - 2 max
     void setInterline(uint8_t n); //default: 6
-    void setCharSpacing(uint8_t n = 0); //size x 0.125 millimeters(1dot); x2 if double width
+    void setCharSpacing(uint8_t n = 0); // n x 0.125 millimeters(1dot); x2 if double width
     void setTabs(uint8_t* tab = 0, uint8_t size = 0);
     void clearTabs();
     void tab();
@@ -186,7 +206,6 @@ strikeout
 sleep and wake
 
 new type of timeout !!
-
 
 no:
 user-definied character

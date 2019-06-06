@@ -1,7 +1,6 @@
 /* made by BinaryWorlds
 Not for commercial use,
 in other case by free to use it. Just copy this text and link to oryginal repository: https://github.com/BinaryWorlds/ThermalPrinter
-
 I am not responsible for errors in the library. I deliver it "as it is".
 I will be grateful for all suggestions.
 */
@@ -21,8 +20,11 @@ void Tprinter::update(){ /*private*/
     widthMax /= 2;
   }
   if(printMode & DOUBLE_HEIGHT) charHeight *= 2;
-  print_time = charHeight * oneDotHeight_printTime;
-  feed_time = (charHeight + interlineHeight) * oneDotHeight_feedTime;
+  if(calculateMode)calculatePrintTime();
+  else{
+    print_time = charHeight * oneDotHeight_printTime;
+    feed_time = (charHeight + interlineHeight) * oneDotHeight_feedTime;
+  }
 }
 
 size_t Tprinter::write(uint8_t sign){
@@ -37,7 +39,7 @@ size_t Tprinter::write(uint8_t sign){
     /* force the printout of a new line;
      printer print a line after took widthMax + 1 char*/
     if(sign == '\n') {
-      val += print_time + feed_time;/* if only feed, still use print time. why not?*/
+      val += print_time + feed_time;/* if only feed, still use print time*/
       cursor = 0;
     }
     setDelay(val);
@@ -69,7 +71,7 @@ void Tprinter::disableDtr(bool mode){ //if pin unused - pull them for decrease(v
 }
 
 void inline Tprinter::wait(){
-  if(dtrEnabled) while(digitalRead(dtrPin));
+  if(dtrEnabled) while(digitalRead(dtrPin)); // 0 - my printer busy, check ur printer
   else while(long(micros() - endPoint) < 0);
 }
 
@@ -101,22 +103,36 @@ void Tprinter::setCharset(uint8_t val){
   setDelay(3*char_send_time);
 }
 
-void Tprinter::setTimes(unsigned long p, unsigned long f){
-  oneDotHeight_printTime = p;
-  oneDotHeight_feedTime = f;
-
-  print_time = p * charHeight;
-  feed_time = f * (interlineHeight + charHeight);
+void inline Tprinter::autoCalculate(bool val){
+  calculateMode = val;
 }
 
-void Tprinter::setHeat(uint8_t dots, uint8_t time, uint8_t interval){
+void inline Tprinter::calculatePrintTime(){
+  print_time = ((widthInDots*charHeight)
+            / ((heating_dots + 1)*8))
+                                      * 10*(heating_time + heating_interval)
+                                        /2; // rarely all dots are printed
+}
+
+void Tprinter::setTimes(unsigned long p, unsigned long f){
+  if(!calculateMode){
+    oneDotHeight_printTime = p;
+    oneDotHeight_feedTime = f;
+
+    print_time = p * charHeight;
+    feed_time = f * (interlineHeight + charHeight);
+  }
+}
+
+void Tprinter::setHeat(uint8_t n1, uint8_t n2, uint8_t n3){
   wait();
   stream->write(ESC);
   stream->write('7');
-  stream->write(dots);
-  stream->write(time);
-  stream->write(interval);
+  stream->write(heating_dots = n1);
+  stream->write(heating_time = n2);
+  stream->write(heating_interval = n3);
   setDelay(5*char_send_time);
+  if(calculateMode)calculatePrintTime();
 }
 
 void Tprinter::setMode(uint8_t m1, uint8_t m2, uint8_t m3,
@@ -259,6 +275,9 @@ void Tprinter::reset(){
   interlineHeight = 6;
   printMode = 0;
   charSpacing = 0;
+  heating_dots = 9;
+  heating_time = 80;
+  heating_interval = 2;
   update();
 }
 
@@ -269,7 +288,7 @@ void Tprinter::begin(){
   setHeat();
   setCodePage();
   setCharset();
-  update();
+  setInterline(0); // save paper during testing
   uint8_t list[]={4,8,12,16,20,24,28,32,36,40,44,48};
   setTabs(list, 12);// if widthMax == 32, last tab is 28
 }
