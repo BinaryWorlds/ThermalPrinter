@@ -146,7 +146,7 @@ private:
     void disableDtr(bool mode = 1); // 1 = pullup, 0 = pulldown
 
     void wait();
-    void setDelay(unsigned long time);// microseconds; ignored if Dtr pin is disable
+    void setDelay(unsigned long time);// microseconds; ignored if Dtr pin is enabled
 
     void setCodePage(uint8_t page = 36);
     void setCharset(uint8_t val = 14);
