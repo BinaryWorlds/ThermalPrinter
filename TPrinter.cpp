@@ -39,6 +39,7 @@ size_t Tprinter::write(uint8_t sign){
     /* force the printout of a new line;
      printer print a line after took widthMax + 1 char*/
     if(sign == '\n') {
+      //val += (cursor * print_time)/widthInDots + feed_time;
       val += print_time + feed_time;/* if only feed, still use print time*/
       cursor = 0;
     }
