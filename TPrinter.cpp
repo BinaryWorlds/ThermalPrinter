@@ -35,12 +35,12 @@ size_t Tprinter::write(uint8_t sign){
     stream->write(sign);
     cursor += charWidth + charSpacing;
     if(printMode & DOUBLE_WIDTH) cursor += charSpacing;
-    if(cursor >= (widthInDots - 6) && sign != '\n') stream->write(sign ='\n');// if font_B 384 - 42*9 = 6 no matters in other case; or (widthInDots - cursor)<charWidth,
+    if((widthInDots - cursor)<charWidth && sign != '\n') stream->write(sign ='\n');
     /* force the printout of a new line;
      printer print a line after took widthMax + 1 char*/
     if(sign == '\n') {
-      //val += (cursor * print_time)/widthInDots + feed_time;
-      val += print_time + feed_time;/* if only feed, still use print time*/
+      val += (cursor * print_time)/widthInDots + feed_time;
+      //val += print_time + feed_time; /*max time*/
       cursor = 0;
     }
     setDelay(val);
@@ -71,12 +71,12 @@ void Tprinter::disableDtr(bool mode){ //if pin unused - pull them for decrease(v
   dtrEnabled = false;
 }
 
-void inline Tprinter::wait(){
+void Tprinter::wait(){
   if(dtrEnabled) while(digitalRead(dtrPin)); // 0 - my printer busy, check ur printer
   else while(long(micros() - endPoint) < 0);
 }
 
-void inline Tprinter::setDelay(unsigned long time){
+void Tprinter::setDelay(unsigned long time){
   if(!dtrEnabled) endPoint = (micros() +  time);
 }
 
@@ -104,11 +104,11 @@ void Tprinter::setCharset(uint8_t val){
   setDelay(3*char_send_time);
 }
 
-void inline Tprinter::autoCalculate(bool val){
+void Tprinter::autoCalculate(bool val){
   calculateMode = val;
 }
 
-void inline Tprinter::calculatePrintTime(){
+void Tprinter::calculatePrintTime(){
   print_time = ((widthInDots*charHeight)
             / ((heating_dots + 1)*8))
                                       * 10*(heating_time + heating_interval)
@@ -250,7 +250,7 @@ void Tprinter::tab(){
   }
   stream->write(HT);
 
-  if(cursor >= (widthInDots-6)){
+  if((widthInDots - cursor)<charWidth ){
     setDelay(char_send_time + print_time + feed_time);
     cursor = 0; // printer go newline
   }
@@ -311,7 +311,7 @@ void Tprinter::online(){
 }
 
 /*for test*/
-void Tprinter::identifyChars(char* tab){ // dont use it in the same time with printFromSerial()
+void Tprinter::identifyChars(char* tab){ // dont use it in the same time with printFromSerial)()
   int i{};
   Serial.println();
   Serial.println(F("Separate letters with a space, e.g \"ą ć d\"!"));
