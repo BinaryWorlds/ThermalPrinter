@@ -135,7 +135,7 @@ private:
   unsigned long
     endPoint{},
     char_send_time{},
-    oneDotHeight_printTime{40000},
+    oneDotHeight_printTime{30000},
     oneDotHeight_feedTime{3000},
     feed_time{63000}, //for 6 dot interline
     print_time{720000}; //for 24 high dot

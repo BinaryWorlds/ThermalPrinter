@@ -42,7 +42,8 @@ void setup()
   //myPrinter.autoCalculate();
 
   //or u can set it manually using this:
-  //myPrinter.setTimes(40000, 3000); //oneDotHeight_printTime, oneDotHeight_feedTime in micros
+  //myPrinter.autoCalculate(0); //turn off
+  //myPrinter.setTimes(30000, 3000); //oneDotHeight_printTime, oneDotHeight_feedTime in micros
   //last is worst option
 
   myPrinter.identifyChars("ą ę"); // UTF-8
