@@ -1,9 +1,13 @@
-/* made by BinaryWorlds
-Not for commercial use,
-in other case by free to use it. Just copy this text and link to oryginal repository: https://github.com/BinaryWorlds/ThermalPrinter
-I am not responsible for errors in the library. I deliver it "as it is".
-I will be grateful for all suggestions.
+/* 
+  made by BinaryWorlds
+  Not for commercial use,
+  in other case by free to use it. Just copy this text and link to oryginal repository:
+  https://github.com/BinaryWorlds/ThermalPrinter
+
+  I am not responsible for errors in the library. I deliver it "as it is".
+  I will be grateful for all suggestions.
 */
+
 #include "TPrinter.h"
 
 Tprinter::Tprinter(Stream *s, int baud):
@@ -29,7 +33,7 @@ void Tprinter::update(){ /*private*/
 
 size_t Tprinter::write(uint8_t sign){
 
-  if(sign != CR){
+  if(sign != A_CR){
     wait();
     unsigned long val = char_send_time;
     stream->write(sign);
@@ -51,28 +55,38 @@ size_t Tprinter::write(uint8_t sign){
 
 void Tprinter::feed(uint8_t n){
   wait();
-  stream->write(ESC);
+  stream->write(A_ESC);
   stream->write('d');
   stream->write(n);
   setDelay(3*char_send_time + feed_time * n);
   cursor = 0;
 }
 
-void Tprinter::enableDtr(uint8_t dtr){
+void Tprinter::enableDtr(uint8_t dtr, bool busy){
   if(dtrEnabled && dtrPin != dtr) disableDtr(); //useless but possible
   dtrPin = dtr;
-  pinMode(dtrPin, INPUT);
+  busyState = busy;
+  pinMode(dtrPin, INPUT_PULLUP);
   dtrEnabled = true;
+  wait();
+  stream->write(A_GS);
+  stream->write('a');
+  stream->write(uint8_t(1<<5));
+  setDelay(3*char_send_time);
 }
 
 void Tprinter::disableDtr(bool mode){ //if pin unused - pull them for decrease(vs INPUT mode) EMI, noisy and power concumption
+  #ifdef INPUT_PULLDOWN
   if(mode)pinMode(dtrPin, INPUT_PULLUP);
   else pinMode(dtrPin, INPUT_PULLDOWN);
+  #else
+  pinMode(dtrPin, INPUT_PULLUP);
+  #endif
   dtrEnabled = false;
 }
 
 void Tprinter::wait(){
-  if(dtrEnabled) while(digitalRead(dtrPin)); // 0 - my printer busy, check ur printer
+  if(dtrEnabled) while(digitalRead(dtrPin) == busyState); // 0 - my printer busy, check ur printer
   else while(long(micros() - endPoint) < 0);
 }
 
@@ -85,10 +99,10 @@ void Tprinter::setCodePage(uint8_t page){
   if(page > 47) page = 47;
 
   wait();
-  stream->write(FS);
+  stream->write(A_FS);
   stream->write('.'); //kanji mode off
 
-  stream->write(ESC);
+  stream->write(A_ESC);
   stream->write('t');
   stream->write(page);
   setDelay(5*char_send_time);
@@ -98,7 +112,7 @@ void Tprinter::setCharset(uint8_t val){
   if(val > 15) val = 15;
   wait();
 
-  stream->write(ESC);
+  stream->write(A_ESC);
   stream->write('R');
   stream->write(val);
   setDelay(3*char_send_time);
@@ -106,6 +120,7 @@ void Tprinter::setCharset(uint8_t val){
 
 void Tprinter::autoCalculate(bool val){
   calculateMode = val;
+  update();
 }
 
 void Tprinter::calculatePrintTime(){
@@ -113,13 +128,14 @@ void Tprinter::calculatePrintTime(){
             / ((heating_dots + 1)*8))
                                       * 10*(heating_time + heating_interval)
                                         /2; // rarely all dots are printed
+
 }
 
-void Tprinter::setTimes(unsigned long p, unsigned long f){
-  if(!calculateMode){
+void Tprinter::setTimes(unsigned long p, unsigned long f){  
     oneDotHeight_printTime = p;
     oneDotHeight_feedTime = f;
 
+  if(!calculateMode){
     print_time = p * charHeight;
     feed_time = f * (interlineHeight + charHeight);
   }
@@ -127,7 +143,7 @@ void Tprinter::setTimes(unsigned long p, unsigned long f){
 
 void Tprinter::setHeat(uint8_t n1, uint8_t n2, uint8_t n3){
   wait();
-  stream->write(ESC);
+  stream->write(A_ESC);
   stream->write('7');
   stream->write(heating_dots = n1);
   stream->write(heating_time = n2);
@@ -141,7 +157,7 @@ void Tprinter::setMode(uint8_t m1, uint8_t m2, uint8_t m3,
 
    wait();
    printMode |= (m1 + m2 + m3 + m4 + m5 + m6 + m7);
-   stream->write(ESC);
+   stream->write(A_ESC);
    stream->write('!');
    stream->write(printMode);
    setDelay(3*char_send_time);
@@ -153,7 +169,7 @@ void Tprinter::unsetMode(uint8_t m1, uint8_t m2, uint8_t m3,
 
    wait();
    printMode &= ~(m1 + m2 + m3 + m4 + m5 + m6 + m7);
-   stream->write(ESC);
+   stream->write(A_ESC);
    stream->write('!');
    stream->write(printMode);
    setDelay(3*char_send_time);
@@ -163,7 +179,7 @@ void Tprinter::unsetMode(uint8_t m1, uint8_t m2, uint8_t m3,
 
 void Tprinter::invert(bool n){
   wait();
-  stream->write(ESC);
+  stream->write(A_ESC);
   stream->write('{');
   stream->write(n);
   setDelay(3*char_send_time);
@@ -181,7 +197,7 @@ void Tprinter::justify(char val){
     case 'R':
       set = 2; break;
   }
-  stream->write(ESC);
+  stream->write(A_ESC);
   stream->write('a');
   stream->write(set);
   setDelay(3*char_send_time);
@@ -190,7 +206,7 @@ void Tprinter::justify(char val){
 void Tprinter::underline(uint8_t n){
   if(n > 2) n = 2;
   wait();
-  stream->write(ESC);
+  stream->write(A_ESC);
   stream->write('-');
   stream->write(n);
   setDelay(3*char_send_time);
@@ -198,7 +214,7 @@ void Tprinter::underline(uint8_t n){
 
 void Tprinter::setInterline(uint8_t n){ // ESC '2' - back to default
   wait();
-  stream->write(ESC);
+  stream->write(A_ESC);
   stream->write('3');
   if(n + charHeight >= 255) interlineHeight = 255;
   else  interlineHeight = n + charHeight;
@@ -211,8 +227,8 @@ void Tprinter::setInterline(uint8_t n){ // ESC '2' - back to default
 
 void Tprinter::setCharSpacing(uint8_t n){ // printer default: 0
   wait();
-  stream->write(ESC);
-  stream->write(SPACE);
+  stream->write(A_ESC);
+  stream->write(A_SPACE);
   stream->write(charSpacing = n);
   setDelay(3*char_send_time);
 }
@@ -224,7 +240,7 @@ The next value can't be equal to or less than the previous one
 void Tprinter::setTabs(uint8_t* tab, uint8_t size){ //sets as absolute position;
   tabs[tabsAmount = 0] = 0;
   wait();
-  stream->write(ESC);
+  stream->write(A_ESC);
   stream->write('D');
 
   for(uint8_t i = 0; i<size; i++){
@@ -248,7 +264,7 @@ void Tprinter::tab(){
       break;
     }
   }
-  stream->write(HT);
+  stream->write(A_HT);
 
   if((widthInDots - cursor)<charWidth ){
     setDelay(char_send_time + print_time + feed_time);
@@ -258,7 +274,7 @@ void Tprinter::tab(){
 }
 
 void Tprinter::clearTabs(){
-  stream->write(ESC);
+  stream->write(A_ESC);
   stream->write('D');
   stream->write('0');
   setDelay(3*char_send_time);
@@ -267,7 +283,7 @@ void Tprinter::clearTabs(){
 }
 
 void Tprinter::reset(){
-  stream->write(ESC);
+  stream->write(A_ESC);
   stream->write('@');
   setDelay(2*char_send_time);
 
@@ -283,8 +299,9 @@ void Tprinter::reset(){
 }
 
 void Tprinter::begin(){
-  setDelay(3000000); // 3s
+  setDelay(2000000); // 2s
   wait();
+  reset();
   online();
   setHeat();
   setCodePage();
@@ -296,7 +313,7 @@ void Tprinter::begin(){
 
 void Tprinter::offline(){
   wait();
-  stream->write(ESC);
+  stream->write(A_ESC);
   stream->write('=');
   stream->write((uint8_t)0);
   setDelay(3*char_send_time);
@@ -304,7 +321,7 @@ void Tprinter::offline(){
 
 void Tprinter::online(){
   wait();
-  stream->write(ESC);
+  stream->write(A_ESC);
   stream->write('=');
   stream->write((uint8_t)1);
   setDelay(3*char_send_time);
@@ -316,9 +333,9 @@ void Tprinter::identifyChars(char* tab){ // dont use it in the same time with pr
   Serial.println();
   Serial.println(F("Separate letters with a space, e.g \"ą ć d\"!"));
   do{
-    if(tab[i] != SPACE){
+    if(tab[i] != A_SPACE){
       int val = i;
-      while(tab[i] != SPACE && tab[i] != 0){
+      while(tab[i] != A_SPACE && tab[i] != 0){
         Serial.print(tab[i]);
         i++;
       }

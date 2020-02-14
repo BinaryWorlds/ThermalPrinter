@@ -1,9 +1,13 @@
-/* made by BinaryWorlds
-Not for commercial use,
-in other case by free to use it. Just copy this text and link to oryginal repository: https://github.com/BinaryWorlds/ThermalPrinter
-I am not responsible for errors in the library. I deliver it "as it is".
-I will be grateful for all suggestions.
+/* 
+  made by BinaryWorlds
+  Not for commercial use,
+  in other case by free to use it. Just copy this text and link to oryginal repository:
+  https://github.com/BinaryWorlds/ThermalPrinter
+
+  I am not responsible for errors in the library. I deliver it "as it is".
+  I will be grateful for all suggestions.
 */
+
 #ifndef TPrinter_h
 #define TPrinter_h
 #include "Arduino.h"
@@ -11,13 +15,15 @@ I will be grateful for all suggestions.
 /* Tested on firmware 2.69 and JP-QR701
 Some features may not work on the older firmware.*/
 
-#define HT    9     // HorizontalTab
-#define LF    10    // 0x0A Line feed
-#define CR    13    // 0x0D Carriage return
-#define SPACE 32    // 0x20 Space
-#define ESC   27    // 0x1B Escape
-#define FS    28    // 0x1C Field separator
-#define FF    14    // 0x0C Form feed
+#define A_GS    29 
+#define A_DC2   18  // Device control 2
+#define A_HT    9     // HorizontalTab
+#define A_LF    10    // 0x0A Line feed
+#define A_CR    13    // 0x0D Carriage return
+#define A_SPACE 32    // 0x20 Space
+#define A_ESC   27    // 0x1B Escape
+#define A_FS    28    // 0x1C Field separator
+#define A_FF    14    // 0x0C Form feed
 
 #define FONT_B        1         //Font B: 9x17, Standard font A: 12x24
 #define DARK_MODE     (1 << 1)  // anti-white mode, didnt work?
@@ -93,8 +99,12 @@ Some features may not work on the older firmware.*/
 class Tprinter : public Print {
 
 private:
+  Stream  *stream; 
+
+  int baudrate{9600}; //19200
 
   bool
+    busyState = HIGH,
     dtrEnabled{false},
     /*  tested:
     when printer stop being busy, it's doesn't mean end of printing
@@ -102,17 +112,14 @@ private:
     keep it in mind,
     it's a big difference when you don't use dtr pin and the time needed for printing is calculated
     */
-    calculateMode{true};
-  Stream  *stream;
-  int baudrate{9600}; //19200
+    calculateMode{true};   
 
   const uint16_t widthInDots = 384; /* to calculate aboslute position,
    when using some functions like setCharSpacing*/
 
   uint16_t
-  cursor{}, //actual position, n of 384
-  tabs[32] = {}; // default in printer: 8,16,24,32 (*12dots) - doesn't work in my case
-
+    cursor{}, //actual position, n of 384
+    tabs[32] = {}; // default in printer: 8,16,24,32 (*12dots) - doesn't work in my case
   uint8_t
     dtrPin{},
     tabsAmount = {0},
@@ -128,13 +135,12 @@ private:
   unsigned long
     endPoint{},
     char_send_time{},
-    oneDotHeight_printTime{30000},
-    oneDotHeight_feedTime{2100},
+    oneDotHeight_printTime{40000},
+    oneDotHeight_feedTime{3000},
     feed_time{63000}, //for 6 dot interline
     print_time{720000}; //for 24 high dot
 
   void update();
-
 
   public:
     Tprinter(Stream *s, int baud = 9600);
@@ -142,8 +148,8 @@ private:
     size_t write(uint8_t sign);//from inherited Print class, u can use println() ...
     void feed(uint8_t n = 1); // feed n lines
 
-    void enableDtr(uint8_t dtr); // pin nr
-    void disableDtr(bool mode = 1); // 1 = pullup, 0 = pulldown
+    void enableDtr(uint8_t dtr, bool busy = HIGH); // pin nr, printer busy when DTR is HIGH or LOW
+    void disableDtr(bool mode = 1); // 1 - INPUT_PULLUP, 0 - INPUT_PULLDOWN
 
     void wait();
     void setDelay(unsigned long time);// microseconds; ignored if Dtr pin is enabled
@@ -151,7 +157,8 @@ private:
     void setCodePage(uint8_t page = 36);
     void setCharset(uint8_t val = 14);
 
-    void autoCalculate(bool val = 1);
+    void autoCalculate(bool val = 1); // 1 - on, 0 - off
+    
 /*
 1 - ON;
 calculate on the basis of heating points, time and interval
@@ -162,7 +169,7 @@ calculate on the basis of oneDotHeight_printTime and oneDotHeight_feedTime
 u can change values above using setTimes
 */
     void calculatePrintTime();//ignored if Dtr pin is enabled
-    void setTimes(unsigned long p = 30000, unsigned long f = 2100);//ignored if Dtr pin is disabled or autoCalculate is ON
+    void setTimes(unsigned long p = 30000, unsigned long f = 3000);//ignored if Dtr pin is enabled or autoCalculate is ON
     void setHeat(uint8_t n1 = 0, uint8_t n2 = 255, uint8_t n3 = 0);
 /*
 best quality: the smallest number of dots burned, the longest heating time
@@ -199,16 +206,3 @@ interval: default 2 (20us); units :10 us
 };
 
 #endif
-
-/*
-to do:
-strikeout
-sleep and wake
-
-new type of timeout !!
-
-no:
-user-definied character
-barcode
-bitmap
-*/
